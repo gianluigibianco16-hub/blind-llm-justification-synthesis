@@ -73,6 +73,17 @@ You will need:
 - An **OpenAI API key** with Batch API access
 - A **Google AI API key** with Gemini access
 
+### Setting up API keys (Google Colab Secrets)
+
+All notebooks read API keys from Colab Secrets, not from the code. Before running any notebook:
+
+1. Open the notebook in Google Colab
+2. Click the 🔑 icon in the left sidebar ("Secrets")
+3. Add the following secrets:
+   - `OPENAI_API` → your OpenAI API key (`sk-...`)
+   - `GOOGLE_API` → your Google AI API key (`AIza...`)
+4. Enable access to the secret for the current notebook
+
 ### Dataset
 
 The merged LIAR-PLUS dataset (`data/liar_plus_merged.xlsx`) is included in this repository. It was constructed by concatenating the three original splits (`train2.tsv`, `val2.tsv`, `test2.tsv`) from the [LIAR-PLUS repository](https://github.com/Tariq60/LIAR-PLUS), with a preserved `split` column to allow exact reconstruction of the original boundaries.
