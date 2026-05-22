@@ -1,30 +1,43 @@
 # Explainable Fact-Checking via Blind LLM Justification Synthesis
 
 > **Master's Thesis Pipeline — Code Repository**  
-> This repository contains all generation and classification code produced for the thesis *"Explainable Fact-Checking via Blind LLM Justification Synthesis"*, which investigates whether LLM-generated justifications produced without access to ground-truth veracity labels (the **blind protocol**) can improve automated fact-checking performance on the [LIAR-PLUS](https://github.com/Tariq60/LIAR-PLUS) dataset.
+> This repository contains all generation, classification, and analysis code produced for the thesis *"Explainable Fact-Checking via Blind LLM Justification Synthesis"*, which investigates whether LLM-generated justifications produced without access to ground-truth veracity labels (the **blind protocol**) can improve automated fact-checking performance on the [LIAR-PLUS](https://github.com/Tariq60/LIAR-PLUS) dataset.
 
 ---
 
 ## Repository Structure
 
 ```
-├── 01_paraphrase_openai.ipynb          # GPT-4o-mini paraphrases LIAR-PLUS claims
-├── 02_paraphrase_gemini.ipynb          # Gemini 2.5 Flash Lite paraphrases LIAR-PLUS claims
-├── 03_justification_openai_original.ipynb    # GPT-4o-mini justifications on original claims
-├── 04_justification_openai_paraphrased.ipynb # GPT-4o-mini justifications on Gemini-paraphrased claims
-├── 05_justification_gemini_original.ipynb    # Gemini 2.5 Flash Lite justifications on original claims
-├── 06_justification_gemini_paraphrased.ipynb # Gemini 2.5 Flash Lite justifications on GPT-paraphrased claims
-├── 07_bilstm_classifier.ipynb          # BiLSTM classification across all four conditions
-├── 08_ted_contamination_probe.ipynb    # TED-based contamination diagnostic (GPT-4o-mini only)
+├── 01_paraphrase_openai.ipynb               # GPT-4o-mini paraphrases LIAR-PLUS claims
+├── 02_paraphrase_gemini.ipynb               # Gemini 2.5 Flash Lite paraphrases LIAR-PLUS claims
+├── 03_justification_openai_original.ipynb   # GPT-4o-mini justifications on original claims
+├── 04_justification_openai_paraphrased.ipynb# GPT-4o-mini justifications on Gemini-paraphrased claims
+├── 05_justification_gemini_original.ipynb   # Gemini 2.5 Flash Lite justifications on original claims
+├── 06_justification_gemini_paraphrased.ipynb# Gemini 2.5 Flash Lite justifications on GPT-paraphrased claims
+├── 07_bilstm_classifier.ipynb               # BiLSTM classification across all four conditions
+├── 08_ted_contamination_probe.ipynb         # TED contamination diagnostic (GPT-4o-mini only)
+├── 09_LIAR_PLUS_EDA.ipynb                   # Exploratory Data Analysis on LIAR-PLUS
 │
-├── data/
-│   ├── liar_plus_merged.xlsx           # Full LIAR-PLUS (train + val + test, split column preserved)
-│   ├── openai_paraphrase_part1.xlsx    # Pre-split input files for OpenAI paraphrase notebook
-│   ├── openai_paraphrase_part2.xlsx
-│   ├── openai_paraphrase_part3.xlsx
-│   └── openai_paraphrase_part4.xlsx
-│
-└── outputs/                            # Generated justifications and classification results
+└── data/
+    ├── liar_plus_merged.xlsx                # LIAR-PLUS (train + val + test, split column preserved)
+    ├── Liar_plus_synthetic.xlsx             # Final dataset: all claims + metadata + Paraphrase + 4 synthetic justification columns
+    ├── openai_paraphrase_part1.xlsx         # Pre-split input files for OpenAI paraphrase notebook (to be upload manually)
+    ├── openai_paraphrase_part2.xlsx
+    ├── openai_paraphrase_part3.xlsx
+    ├── openai_paraphrase_part4.xlsx
+    │
+    ├── EDA_results/
+    │   └── eda_figures.zip                  # All EDA figures produced by notebook 09
+    │
+    ├── Model_Result/
+    │   ├── results_C1.xlsx                  # Per-instance predictions and metrics, condition C1
+    │   ├── results_C2.xlsx                  # Per-instance predictions and metrics, condition C2
+    │   ├── results_C3.xlsx                  # Per-instance predictions and metrics, condition C3
+    │   ├── results_C4.xlsx                  # Per-instance predictions and metrics, condition C4
+    │   └── results_summary.xlsx             # Accuracy, weighted F1, macro F1 across all conditions
+    │
+    └── Ted_Results/
+        └── TED_results.xlsx                 # TED contamination probe metrics (GPT-4o-mini)
 ```
 
 ---
@@ -44,6 +57,8 @@ The thesis compares five conditions on the binary veracity classification task (
 
 The **mutual paraphrase design** ensures no model generates justifications for claims it has itself paraphrased, reducing surface-familiarity bias.
 
+The final dataset `Liar_plus_synthetic.xlsx` contains all 12,791 LIAR-PLUS claims paired with four columns of blind synthetic justifications (one per condition), and is immediately usable for downstream research.
+
 ---
 
 ## Running the Pipeline
@@ -51,25 +66,22 @@ The **mutual paraphrase design** ensures no model generates justifications for c
 ### Prerequisites
 
 ```bash
-pip install openai google-generativeai pandas openpyxl tensorflow numpy scikit-learn
+pip install openai google-generativeai pandas openpyxl tensorflow numpy scikit-learn statsmodels
 ```
 
 You will need:
 - An **OpenAI API key** with Batch API access
 - A **Google AI API key** with Gemini access
-- The LIAR-PLUS dataset (see below)
 
 ### Dataset
 
-Download LIAR-PLUS from the [official repository](https://github.com/Tariq60/LIAR-PLUS). Place the three split files (`train2.tsv`, `val2.tsv`, `test2.tsv`) in the `data/` folder.
-
-Run `01_paraphrase_openai.ipynb` Cell 1 to merge the splits into `liar_plus_merged.xlsx` with a preserved `split` column.
+The merged LIAR-PLUS dataset (`data/liar_plus_merged.xlsx`) is included in this repository. It was constructed by concatenating the three original splits (`train2.tsv`, `val2.tsv`, `test2.tsv`) from the [LIAR-PLUS repository](https://github.com/Tariq60/LIAR-PLUS), with a preserved `split` column to allow exact reconstruction of the original boundaries.
 
 ---
 
 ## Running Each Notebook — Iteration Instructions
 
-Each generation notebook processes the full dataset (≈12,800 instances) in **multiple iterations**, because the Batch API imposes file-size and request-count limits. Each iteration processes one chunk of the dataset.
+Each generation notebook processes the full dataset (~12,800 instances) in **multiple iterations**, because the Batch API imposes file-size and request-count limits per submission.
 
 ### How iteration works
 
@@ -90,15 +102,11 @@ df = df_full.iloc[0:2200]          # Iteration 1  ← uncomment this one first
 ```
 
 **For each iteration:**
-
-1. Open the notebook.
-2. In Cell 2, **uncomment the `df =` line for the current iteration** and comment all others.
-3. Run Cell 2 → Cell 5 in sequence.
-4. Cell 5 saves a partial output file (e.g., `output_iter1.xlsx`).
-5. Repeat steps 2–4 for iterations 2 through N.
-6. After all iterations complete, run the **merge cell** at the bottom of the notebook to concatenate all partial files into a single output.
-
-> **Tip:** Run one iteration per Colab session, or use separate Colab tabs. Batch jobs can take several hours; Cell 4 polls for completion and will wait until the job finishes.
+1. In Cell 2, **uncomment the `df =` line for the current iteration** and comment all others.
+2. Run Cell 2 → Cell 5 in sequence.
+3. Cell 5 saves a partial output file (e.g., `output_iter1.xlsx`).
+4. Repeat for all iterations.
+5. Run the **merge cell** at the bottom of the notebook to concatenate all partial files.
 
 ---
 
@@ -106,10 +114,7 @@ df = df_full.iloc[0:2200]          # Iteration 1  ← uncomment this one first
 
 #### `01_paraphrase_openai.ipynb` — 4 iterations
 
-The OpenAI Batch API enforces a stricter per-batch request limit for free/low-tier accounts. The dataset is therefore divided into **4 parts** rather than 6.
-
-> **Pre-split files provided:** `data/openai_paraphrase_part1.xlsx` through `part4.xlsx` are already split and ready to use.  
-> Cell 2 of this notebook loads one part file per iteration rather than slicing `df_full`. Change the `PART` constant at the top of Cell 2:
+The OpenAI Batch API enforces stricter per-batch request limits. The dataset is divided into **4 parts**, which are already pre-split and provided in `data/`:
 
 ```python
 PART = 1   # Change to 2, 3, or 4 for subsequent iterations
@@ -119,43 +124,26 @@ df = pd.read_excel(input_file)
 
 #### `02_paraphrase_gemini.ipynb` — 4 iterations
 
-Same split logic as above, but uses the Google AI Batch API. Uses the `df_full.iloc[...]` slice pattern with 4 chunks.
+Uses the `df_full.iloc[...]` slice pattern with 4 chunks.
 
-#### `03_justification_openai_original.ipynb` through `06_justification_gemini_paraphrased.ipynb` — 6 iterations each
+#### `03` through `06` — 6 iterations each
 
-These four notebooks each process the full ≈12,800-instance dataset in 6 chunks of ≈2,133 instances. Use the `df_full.iloc[...]` slice pattern shown above.
+These four notebooks process the full dataset in 6 chunks of ~2,133 instances using the `df_full.iloc[...]` pattern shown above.
 
 ---
 
 ## Output Files
 
-After all iterations complete and the merge cell is run, each notebook produces one Excel file:
-
-| Output file | Used as input to classifier |
+| Output file | Description |
 |---|---|
-| `paraphrases_openai.xlsx` | C2, C4 input (Gemini justification notebook) |
-| `paraphrases_gemini.xlsx` | C1, C3 input (OpenAI justification notebook) |
-| `justifications_c1_openai_geminiparaphrase.xlsx` | Condition C1 |
-| `justifications_c2_gemini_openaiparaphrase.xlsx` | Condition C2 |
-| `justifications_c3_openai_original.xlsx` | Condition C3 |
-| `justifications_c4_gemini_original.xlsx` | Condition C4 |
-
----
-
-## Classification
-
-`07_bilstm_classifier.ipynb` trains and evaluates the BiLSTM classifier for all four experimental conditions and the claim-only baseline. It requires:
-
-- GloVe 6B 100d embeddings: download from [nlp.stanford.edu/projects/glove](https://nlp.stanford.edu/projects/glove/) and place `glove.6B.100d.txt` in the `data/` folder.
-- The four justification output files above.
-
-The notebook reports accuracy, weighted F1, and macro F1 on validation and test sets, and runs McNemar's tests between all condition pairs (see thesis Section 5.2).
-
----
-
-## Contamination Assessment
-
-`08_ted_contamination_probe.ipynb` implements the TED-based contamination diagnostic described in thesis Section 4.7. It requires an OpenAI API key with `logprobs` support and runs synchronous (non-batch) calls on a 400-instance stratified sample.
+| `data/Liar_plus_synthetic.xlsx` | Final dataset with all 4 synthetic justification columns |
+| `data/Model_Result/results_C1.xlsx` | Per-instance predictions, condition C1 |
+| `data/Model_Result/results_C2.xlsx` | Per-instance predictions, condition C2 |
+| `data/Model_Result/results_C3.xlsx` | Per-instance predictions, condition C3 |
+| `data/Model_Result/results_C4.xlsx` | Per-instance predictions, condition C4 |
+| `data/Model_Result/results_summary.xlsx` | Accuracy, weighted F1, macro F1 — all conditions |
+| `data/Ted_Results/TED_results.xlsx` | TED contamination probe metrics |
+| `data/EDA_results/eda_figures.zip` | All EDA figures |
 
 ---
 
@@ -173,7 +161,7 @@ And the underlying dataset:
 ```
 Alhindi, T., Petridis, S., & Muresan, S. (2018).
 Where is Your Evidence: Improving Fact-checking by Justification Modeling.
-In Proceedings of the First Workshop on Fact Extraction and VERification (FEVER), pp. 85–90.
+Proceedings of the First Workshop on Fact Extraction and VERification (FEVER), pp. 85–90.
 ACL. https://doi.org/10.18653/v1/W18-5513
 ```
 
