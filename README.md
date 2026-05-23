@@ -211,7 +211,7 @@ No comparison reaches statistical significance (α = 0.05) in any of the three r
 If you use this code or dataset in your research, please cite:
 
 ```
-[Author]. (2025). Explainable Fact-Checking via Blind LLM Justification Synthesis.
+[Gianluigi Bianco]. (2025). Explainable Fact-Checking via Blind LLM Justification Synthesis.
 Master's Thesis.
 ```
 
