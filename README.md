@@ -8,36 +8,35 @@
 ## Repository Structure
 
 ```
-├── 01_paraphrase_openai.ipynb               # GPT-4o-mini paraphrases LIAR-PLUS claims
-├── 02_paraphrase_gemini.ipynb               # Gemini 2.5 Flash Lite paraphrases LIAR-PLUS claims
-├── 03_justification_openai_original.ipynb   # GPT-4o-mini justifications on original claims
-├── 04_justification_openai_paraphrased.ipynb# GPT-4o-mini justifications on Gemini-paraphrased claims
-├── 05_justification_gemini_original.ipynb   # Gemini 2.5 Flash Lite justifications on original claims
-├── 06_justification_gemini_paraphrased.ipynb# Gemini 2.5 Flash Lite justifications on GPT-paraphrased claims
-├── 07_bilstm_classifier.ipynb               # BiLSTM classification across all four conditions
-├── 08_ted_contamination_probe.ipynb         # TED contamination diagnostic (GPT-4o-mini only)
-├── 09_LIAR_PLUS_EDA.ipynb                   # Exploratory Data Analysis on LIAR-PLUS
+├── 01_paraphrase_openai.ipynb                # GPT-4o-mini paraphrases LIAR-PLUS claims
+├── 02_paraphrase_gemini.ipynb                # Gemini 2.5 Flash Lite paraphrases LIAR-PLUS claims
+├── 03_justification_openai_original.ipynb    # GPT-4o-mini justifications on original claims
+├── 04_justification_openai_paraphrased.ipynb # GPT-4o-mini justifications on Gemini-paraphrased claims
+├── 05_justification_gemini_original.ipynb    # Gemini 2.5 Flash Lite justifications on original claims
+├── 06_justification_gemini_paraphrased.ipynb # Gemini 2.5 Flash Lite justifications on GPT-paraphrased claims
+├── 07_bilstm_classifier.ipynb                # BiLSTM classification across all four conditions
+├── 08_ted_contamination_probe.ipynb          # TED contamination diagnostic (GPT-4o-mini only)
+├── 09_LIAR_PLUS_EDA.ipynb                    # Exploratory Data Analysis on LIAR-PLUS
+├── 10_mcnemar_test.py                        # McNemar pairwise significance tests across conditions
 │
 └── data/
-    ├── liar_plus_merged.xlsx                # LIAR-PLUS (train + val + test, split column preserved)
-    ├── Liar_plus_synthetic.xlsx             # Final dataset: all claims + metadata + Paraphrase + 4 synthetic justification columns
-    ├── openai_paraphrase_part1.xlsx         # Pre-split input files for OpenAI paraphrase notebook (to be upload manually)
+    ├── liar_plus_merged.xlsx                 # LIAR-PLUS (train + val + test, split column preserved)
+    ├── Liar_plus_synthetic.xlsx              # Final dataset: all claims + metadata + paraphrases + 4 synthetic justification columns
+    ├── openai_paraphrase_part1.xlsx          # Pre-split input files for OpenAI paraphrase notebook
     ├── openai_paraphrase_part2.xlsx
     ├── openai_paraphrase_part3.xlsx
     ├── openai_paraphrase_part4.xlsx
     │
-    ├── EDA_results/
-    │   └── eda_figures.zip                  # All EDA figures produced by notebook 09
+    ├── EDA_results/                          # EDA figures produced by notebook 09
     │
-    ├── Model_Result/
-    │   ├── results_C1.xlsx                  # Per-instance predictions and metrics, condition C1
-    │   ├── results_C2.xlsx                  # Per-instance predictions and metrics, condition C2
-    │   ├── results_C3.xlsx                  # Per-instance predictions and metrics, condition C3
-    │   ├── results_C4.xlsx                  # Per-instance predictions and metrics, condition C4
-    │   └── results_summary.xlsx             # Accuracy, weighted F1, macro F1 across all conditions
+    ├── Model_Result/                         # Classification results across all runs (see details below)
     │
-    └── Ted_Results/
-        └── TED_results.xlsx                 # TED contamination probe metrics (GPT-4o-mini)
+    ├── Ted_Results/
+    │   └── TED_results.xlsx                  # TED contamination probe metrics (GPT-4o-mini)
+    │
+    └── McNemar_Results/
+        ├── mcnemar_results.xlsx              # Aggregated McNemar test results (mean across 3 runs)
+        └── Input/                            # 12 per-instance prediction files used as test input
 ```
 
 ---
@@ -119,13 +118,11 @@ df = df_full.iloc[0:2200]          # Iteration 1  ← uncomment this one first
 4. Repeat for all iterations.
 5. Run the **merge cell** at the bottom of the notebook to concatenate all partial files.
 
----
-
 ### Notebook-specific notes
 
 #### `01_paraphrase_openai.ipynb` — 4 iterations
 
-The OpenAI Batch API enforces stricter per-batch request limits. The dataset is divided into **4 parts**, which are already pre-split and provided in `data/`:
+The OpenAI Batch API enforces stricter per-batch request limits. The dataset is divided into **4 parts**, already pre-split and provided in `data/`:
 
 ```python
 PART = 1   # Change to 2, 3, or 4 for subsequent iterations
@@ -143,18 +140,69 @@ These four notebooks process the full dataset in 6 chunks of ~2,133 instances us
 
 ---
 
-## Output Files
+## Classification Results and Reproducibility
 
-| Output file | Description |
+Classification results are reported as **mean ± standard deviation across four independent training runs**, conducted in separate Colab sessions. This is necessary because TensorFlow's GPU backend introduces non-deterministic behaviour that is not fully controlled by the random seed, causing minor variation across sessions (up to 1.5 percentage points per condition).
+
+The `data/Model_Result/` folder contains:
+
+- **`results_C1.xlsx` through `results_C4.xlsx`** — per-instance predictions and metrics for each experimental condition, from the first training run. These are the files used as input to the McNemar test.
+- **`results_summary_1.xlsx` through `results_summary_4.xlsx`** — aggregated accuracy, weighted F1, and macro F1 for all four conditions, one file per independent run. These four files are the basis for the mean ± std figures reported in the thesis (Table 2).
+
+The mean ± std values across the four runs are:
+
+| Condition | Test Acc | Test F1 (w) | Test F1 (macro) |
+|-----------|----------|-------------|-----------------|
+| C1 — GPT just. \| Gemini paraphrase | 0.621 ± 0.004 | 0.622 ± 0.004 | 0.617 ± 0.003 |
+| C2 — Gemini just. \| GPT paraphrase | 0.619 ± 0.005 | 0.617 ± 0.005 | 0.609 ± 0.005 |
+| C3 — GPT just. \| Original claim    | 0.618 ± 0.002 | 0.618 ± 0.003 | 0.612 ± 0.005 |
+| C4 — Gemini just. \| Original claim | 0.622 ± 0.009 | 0.620 ± 0.007 | 0.614 ± 0.007 |
+
+All four conditions consistently outperform the claim-only baseline (0.600) across all runs.
+
+---
+
+## McNemar's Test
+
+`10_mcnemar_test.py` implements McNemar's test to assess whether accuracy differences between conditions are statistically significant. It operates on **three independent runs** (runs 2, 3, and 4 — labelled A, B, C), each providing per-instance predictions for all four conditions.
+
+**Input files** (12 total, stored in `data/McNemar_Results/Input/`):
+- `results_C{1-4}_predictions_A.xlsx` — predictions from run 2
+- `results_C{1-4}_predictions_B.xlsx` — predictions from run 3
+- `results_C{1-4}_predictions_C.xlsx` — predictions from run 4
+
+Each file contains two columns: `true_label` and `pred_label`, one row per test instance (n = 1,267).
+
+**Four pairwise comparisons** are tested:
+1. C1 vs C3 — paraphrase effect, GPT-4o-mini
+2. C2 vs C4 — paraphrase effect, Gemini 2.5 Flash Lite
+3. C1 vs C2 — model effect, paraphrased-claim conditions
+4. C3 vs C4 — model effect, original-claim conditions
+
+**Results** (`data/McNemar_Results/mcnemar_results.xlsx`):
+
+| Comparison | mean χ² | mean p | min p |
+|---|---|---|---|
+| C1 (GPT, paraphrased) vs C3 (GPT, original) | 0.023 | 0.903 | 0.804 |
+| C2 (Gemini, paraphrased) vs C4 (Gemini, original) | 0.530 | 0.657 | 0.214 |
+| C1 (GPT, paraphrased) vs C2 (Gemini, paraphrased) | 0.228 | 0.686 | 0.461 |
+| C3 (GPT, original) vs C4 (Gemini, original) | 0.561 | 0.577 | 0.260 |
+
+No comparison reaches statistical significance (α = 0.05) in any of the three runs, confirming that neither the paraphrase effect nor the model effect produces a reliably different outcome.
+
+---
+
+## Output Files Summary
+
+| File / Folder | Description |
 |---|---|
-| `data/Liar_plus_synthetic.xlsx` | Final dataset with all 4 synthetic justification columns |
-| `data/Model_Result/results_C1.xlsx` | Per-instance predictions, condition C1 |
-| `data/Model_Result/results_C2.xlsx` | Per-instance predictions, condition C2 |
-| `data/Model_Result/results_C3.xlsx` | Per-instance predictions, condition C3 |
-| `data/Model_Result/results_C4.xlsx` | Per-instance predictions, condition C4 |
-| `data/Model_Result/results_summary.xlsx` | Accuracy, weighted F1, macro F1 — all conditions |
-| `data/Ted_Results/TED_results.xlsx` | TED contamination probe metrics |
-| `data/EDA_results/eda_figures.zip` | All EDA figures |
+| `data/Liar_plus_synthetic.xlsx` | Final dataset: all claims + paraphrases + 4 synthetic justification columns |
+| `data/Model_Result/results_C{1-4}.xlsx` | Per-instance predictions, condition C1–C4 (run 1) |
+| `data/Model_Result/results_summary_{1-4}.xlsx` | Aggregated metrics across four independent runs |
+| `data/Ted_Results/TED_results.xlsx` | TED contamination probe metrics (GPT-4o-mini) |
+| `data/McNemar_Results/mcnemar_results.xlsx` | Aggregated McNemar test results (mean across 3 runs) |
+| `data/McNemar_Results/Input/` | 12 per-instance prediction files used as McNemar test input |
+| `data/EDA_results/eda_figures.zip` | All EDA figures produced by notebook 09 |
 
 ---
 
